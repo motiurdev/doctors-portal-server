@@ -6,6 +6,7 @@ const admin = require("firebase-admin");
 const objectId = require('mongodb').ObjectId;
 require('dotenv').config()
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
+const fileUpload = require("express-fileupload")
 
 
 const port = process.env.PORT || 5000;
@@ -13,6 +14,7 @@ const port = process.env.PORT || 5000;
 // middleWare
 app.use(cors())
 app.use(express.json())
+app.use(fileUpload())
 
 // doctors-portal-firebase-adminsdk.json
 
@@ -48,6 +50,7 @@ async function run() {
         const database = client.db("doctors_portal");
         const appointmentCollection = database.collection("appointments");
         const usersCollection = database.collection("users");
+        const doctorsCollection = database.collection("doctors");
 
         app.post('/appointments', async (req, res) => {
             const appointment = req.body;
@@ -83,6 +86,28 @@ async function run() {
                 }
             }
             const result = await appointmentCollection.updateOne(filter, updateDoc)
+            res.send(result)
+        })
+
+        app.get("/doctors", async (req, res) => {
+            const cursor = doctorsCollection.find({})
+            const doctors = await cursor.toArray()
+            res.send(doctors)
+        })
+
+        app.post("/doctors", async (req, res) => {
+            const name = req.body.name;
+            const email = req.body.email;
+            const pic = req.files.image;
+            const picData = pic.data;
+            const encodedData = picData.toString("base64")
+            const imageBuffer = Buffer.from(encodedData, "base64")
+            const doctor = {
+                name,
+                email,
+                image: imageBuffer
+            }
+            const result = await doctorsCollection.insertOne(doctor)
             res.send(result)
         })
 
